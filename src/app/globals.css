@@ -1,0 +1,52 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --color-primario: #da1d2a;
+  --color-secundario: #244093;
+  --font-sans: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+body {
+  @apply bg-gray-50 text-gray-900 antialiased;
+}
+
+@layer components {
+  .contenedor {
+    @apply mx-auto w-full max-w-7xl px-4 sm:px-6 lg:px-8;
+  }
+  .btn {
+    @apply inline-flex items-center justify-center gap-2 rounded-lg px-4 py-2 text-sm font-medium transition-colors disabled:cursor-not-allowed disabled:opacity-50;
+  }
+  .btn-primario {
+    @apply btn bg-[var(--color-primario)] text-white hover:opacity-90;
+  }
+  .btn-secundario {
+    @apply btn bg-[var(--color-secundario)] text-white hover:opacity-90;
+  }
+  .btn-borde {
+    @apply btn border border-gray-300 bg-white text-gray-700 hover:bg-gray-50;
+  }
+  .input {
+    @apply w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm focus:border-[var(--color-secundario)] focus:outline-none focus:ring-1 focus:ring-[var(--color-secundario)];
+  }
+  .etiqueta {
+    @apply inline-block rounded-full px-2 py-0.5 text-xs font-semibold;
+  }
+  .tarjeta {
+    @apply rounded-xl border border-gray-200 bg-white shadow-sm;
+  }
+}
+
+/* Ocultar scrollbars en carruseles manteniendo scroll */
+.snap-x {
+  scroll-snap-type: x mandatory;
+}
+.snap-center {
+  scroll-snap-align: center;
+}

@@ -1,0 +1,215 @@
+// Esquema de base de datos del Taller Creativo EK (PostgreSQL / Supabase).
+// Todo el modelo está en español.
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ── Usuarios y roles ─────────────────────────────────────────────
+// Los "enum" se modelan como String para máxima compatibilidad
+// entre SQLite (desarrollo) y PostgreSQL (producción).
+
+model Usuario {
+  id         String      @id @default(uuid()) @db.Uuid
+  nombre     String
+  email      String      @unique
+  contrasena String
+  rol        String      @default("CLIENTE") // CLIENTE | DISTRIBUIDOR | ADMINISTRADOR
+  telefono   String?
+  activo     Boolean     @default(true)
+  creadoEn   DateTime    @default(now())
+
+  cambiosRol  CambioRol[]
+  pedidos     Pedido[]
+  resenas     Resena[]
+  direcciones Direccion[]
+  auditorias  Auditoria[]
+}
+
+// Auditoría del cambio de rol (ej. CLIENTE → DISTRIBUIDOR, solo por admin)
+model CambioRol {
+  id         String   @id @default(uuid()) @db.Uuid
+  usuarioId  String
+  usuario    Usuario  @relation(fields: [usuarioId], references: [id], onDelete: Cascade)
+  rolAnterior String
+  rolNuevo   String
+  adminId    String?
+  motivo     String?
+  creadoEn   DateTime @default(now())
+}
+
+model Direccion {
+  id        String  @id @default(uuid()) @db.Uuid
+  usuarioId String
+  usuario   Usuario @relation(fields: [usuarioId], references: [id], onDelete: Cascade)
+  calle     String
+  ciudad    String
+  estado    String
+  cp        String
+  pais      String  @default("México")
+}
+
+// ── Catálogo ─────────────────────────────────────────────────────
+
+model Categoria {
+  id            String         @id @default(uuid()) @db.Uuid
+  nombre        String         @unique
+  slug          String         @unique
+  descripcion   String?
+  imagen        String?
+  orden         Int            @default(0)
+  activo        Boolean        @default(true)
+  esPrincipal   Boolean        @default(true)
+  subcategorias Subcategoria[]
+  productos     Producto[]
+}
+
+model Subcategoria {
+  id         String      @id @default(uuid()) @db.Uuid
+  nombre     String
+  slug       String      @unique
+  orden      Int         @default(0)
+  activo     Boolean     @default(true)
+  padreId    String?
+  padre      Subcategoria? @relation("SubcategoriaJerarquia", fields: [padreId], references: [id], onDelete: SetNull)
+  hijas      Subcategoria[] @relation("SubcategoriaJerarquia")
+  categorias Categoria[]
+  productos  Producto[]
+}
+
+model Producto {
+  id                 String        @id @default(uuid()) @db.Uuid
+  nombre             String
+  slug               String        @unique
+  descripcion        String
+  numeroArticulo     String        @unique
+  color              String?
+  destacado          Boolean       @default(false)
+  activo             Boolean       @default(true)
+  nuevo              Boolean       @default(false)
+  liquidacion        Boolean       @default(false)
+  precioMinorista    Float
+  precioDistribuidor Float
+  stock              Int           @default(0)
+  vendidos           Int           @default(0)
+  calificacion       Float         @default(0)
+  imagen             String?
+  creadoEn           DateTime      @default(now())
+
+  categorias     Categoria[]
+  subcategorias  Subcategoria[]
+  tallas         Talla[]
+  resenas        Resena[]
+  detallesPedido DetallePedido[]
+}
+
+model Talla {
+  id         String   @id @default(uuid()) @db.Uuid
+  productoId String
+  producto   Producto @relation(fields: [productoId], references: [id], onDelete: Cascade)
+  nombre     String
+  stock      Int      @default(0)
+  extra      Float    @default(0)
+}
+
+model Resena {
+  id         String   @id @default(uuid()) @db.Uuid
+  productoId String
+  producto   Producto @relation(fields: [productoId], references: [id], onDelete: Cascade)
+  usuarioId  String
+  usuario    Usuario  @relation(fields: [usuarioId], references: [id], onDelete: Cascade)
+  estrellas  Int
+  comentario String
+  aprobada   Boolean  @default(false)
+  creadoEn   DateTime @default(now())
+}
+
+// ── Pedidos y facturas ───────────────────────────────────────────
+
+model Pedido {
+  id             String         @id @default(uuid()) @db.Uuid
+  usuarioId      String
+  usuario        Usuario        @relation(fields: [usuarioId], references: [id])
+  estado         String         @default("PENDIENTE") // PENDIENTE | PAGADO | EN_PREPARACION | ENVIADO | ENTREGADO | CANCELADO | REEMBOLSADO
+  subtotal       Float          @default(0)
+  impuesto       Float          @default(0)
+  envio          Float          @default(0)
+  total          Float          @default(0)
+  direccionEnvio String?
+  metodoPago     String?
+  creadoEn       DateTime       @default(now())
+  detalles       DetallePedido[]
+  factura        Factura?
+}
+
+model DetallePedido {
+  id             String     @id @default(uuid()) @db.Uuid
+  pedidoId       String
+  pedido         Pedido     @relation(fields: [pedidoId], references: [id], onDelete: Cascade)
+  productoId     String
+  producto       Producto   @relation(fields: [productoId], references: [id])
+  cantidad       Int
+  precioUnitario Float
+  tipoPrecio     String // MINORISTA | DISTRIBUIDOR
+  talla          String?
+}
+
+model Factura {
+  id       String   @id @default(uuid()) @db.Uuid
+  numero   String   @unique
+  pedidoId String   @unique
+  pedido   Pedido   @relation(fields: [pedidoId], references: [id], onDelete: Cascade)
+  pdfUrl   String?
+  creadoEn DateTime @default(now())
+}
+
+// ── Blog ─────────────────────────────────────────────────────────
+
+model Articulo {
+  id            String   @id @default(uuid()) @db.Uuid
+  titulo        String
+  slug          String   @unique
+  resumen       String?
+  contenido     String
+  imagen        String?
+  publicado     Boolean  @default(false)
+  creadoEn      DateTime @default(now())
+  actualizadoEn DateTime @updatedAt
+}
+
+// ── Banners (carrusel de la portada) ──────────────────────────────
+
+model Banner {
+  id        String   @id @default(uuid()) @db.Uuid
+  titulo    String
+  subtitulo String?
+  imagen    String?
+  enlace    String?
+  orden     Int      @default(0)
+  activo    Boolean  @default(true)
+  creadoEn  DateTime @default(now())
+}
+
+// ── Configuración del sitio (clave-valor) ────────────────────────
+
+model Configuracion {
+  id    String @id @default(uuid()) @db.Uuid
+  clave String @unique
+  valor String
+}
+
+// ── Bitácora de auditoría (acciones de administradores) ──────────
+
+model Auditoria {
+  id       String   @id @default(uuid()) @db.Uuid
+  adminId  String?
+  admin    Usuario? @relation(fields: [adminId], references: [id], onDelete: SetNull)
+  accion   String
+  detalle  String?
+  creadoEn DateTime @default(now())
+}

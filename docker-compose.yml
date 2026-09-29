@@ -1,0 +1,44 @@
+# ============================================================
+#  Entorno de desarrollo con Docker — Taller Creativo EK
+#  Levanta PostgreSQL + la tienda (Next.js).
+#  Uso:  docker compose up --build
+# ============================================================
+
+services:
+  db:
+    image: postgres:16-alpine
+    container_name: taller-ek-db
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: taller_ek
+    ports:
+      - "5432:5432"
+    volumes:
+      - taller-ek-pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d taller_ek"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  web:
+    build: .
+    container_name: taller-ek-web
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      NODE_ENV: production
+      DATABASE_URL: postgresql://postgres:postgres@db:5432/taller_ek
+      JWT_SECRET: cambia-este-secreto-en-produccion
+      NEXT_PUBLIC_SITE_URL: http://localhost:3000
+      NEXT_PUBLIC_BASE_URL: http://localhost:3000
+      SUPABASE_BUCKET: imagenes
+    ports:
+      - "3000:3000"
+
+volumes:
+  taller-ek-pgdata:

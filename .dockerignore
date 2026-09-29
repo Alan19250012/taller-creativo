@@ -1,0 +1,12 @@
+node_modules
+.next
+out
+build
+.git
+.env
+.env.local
+.gitignore
+Dockerfile
+docker-compose.yml
+public/uploads/*
+*.md
